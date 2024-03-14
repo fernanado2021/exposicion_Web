@@ -1,9 +1,9 @@
 import * as React from 'react';
 import { StyleSheet, View, Text, Button, ImageBackground } from 'react-native';
+import Toast from 'react-native-simple-toast'; // Importar Toast
 import { gameReducer } from '../reducers/gameReducer';
 import { createBoard } from '../utils/createBoard';
 import Cell from './Cell';
-import Toast from 'react-native-simple-toast';
 
 
 const BOARD_SIZE = 10;
@@ -14,21 +14,29 @@ export default function Board() {
     board: createBoard(BOARD_SIZE, BOARD_SIZE, BOMBS_NUM),
     isGameOver: false,
     numOfOpenCells: 0,
+    numOfNonBombCellsOpened: 0,
   });
 
   function handlePress(row, col) {
-    dispatch({ type: 'HANDLE_CELL', row, col });
+    const cell = gameState.board[row][col];
+    if (!cell.isOpen && !cell.isBomb) {
+      dispatch({ type: 'HANDLE_CELL', row, col });
+      const updatedNumOfOpenCells = gameState.numOfOpenCells + 1;
+      const updatedNumOfNonBombCellsOpened = gameState.numOfNonBombCellsOpened + 1;
+      if (updatedNumOfNonBombCellsOpened === (BOARD_SIZE * BOARD_SIZE - BOMBS_NUM)) {
+        Toast.show('¡Ganaste!', Toast.LONG); // Mostrar alerta de ganaste con Toast
+      }    
+      dispatch({ type: 'SET_NUM_OF_OPEN_CELLS', numOfOpenCells: updatedNumOfOpenCells });
+      dispatch({ type: 'SET_NUM_OF_NON_BOMB_CELLS_OPENED', numOfNonBombCellsOpened: updatedNumOfNonBombCellsOpened });
+    } else if (!cell.isOpen && cell.isBomb) {
+      dispatch({ type: 'HANDLE_CELL', row, col });
+      Toast.show('¡Acabas de perder!', Toast.LONG); // Mostrar alerta de perder con Toast
+    }
   }
 
   function handleRestart() {
     dispatch({ type: 'RESTART_GAME' });
   }
-
-  const gameOverMessage = () => {
-    if (gameState.isGameOver) {
-      Toast.show('¡Acabas de perder!', Toast.LONG);
-    }
-  };
 
   return (
     <ImageBackground
@@ -36,7 +44,7 @@ export default function Board() {
       style={styles.container}
     >
       <Text style={styles.title}>
-        {gameOverMessage()}
+        {gameState.isGameOver && gameState.numOfNonBombCellsOpened === (BOARD_SIZE * BOARD_SIZE - BOMBS_NUM) ? '¡Ganaste!' : ''}
       </Text>
       {gameState.board.map((row, rowIdx) => (
         <View key={rowIdx} style={styles.row}>
